@@ -1,0 +1,18 @@
+---
+- user: name={{ ssh_cluster_user }} generate_ssh_key=yes ssh_key_bits=2048 ssh_key_file=.ssh/id_rsa
+
+- command: cat .ssh/id_rsa.pub
+  become: yes
+  become_user: "{{ ssh_cluster_user }}"
+  register: rsa_pub
+- authorized_key: user={{ ssh_cluster_user }} key="{{item[0]}}"
+  delegate_to: "{{item[1]}}"
+  with_nested:
+     - rsa_pub.stdout
+     - "{{ groups[ssh_cluster_ansiblegroup] }}"
+
+- debug: var = {{ ssh_cluster_user_home }}
+- shell: ssh-keyscan -t rsa {{ item }} >> {{ ssh_cluster_user_home }}/.ssh/known_hosts
+  with_items: "{{ groups[ssh_cluster_ansiblegroup] }}"
+  sudo: yes
+  sudo_user: "{{ ssh_cluster_user }}"
